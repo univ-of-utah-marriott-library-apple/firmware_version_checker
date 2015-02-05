@@ -44,7 +44,8 @@ def main():
             output += "\n    Apple support site: {}".format(website_firmware)
 
         if sw_update_firmware_available:
-            output += "\n    softwareupdate: {}".format(sw_update_firmware)
+            for update in sw_update_firmware:
+                output += "\n    softwareupdate: {}".format(update)
 
         print(output)
         sys.exit(10)
