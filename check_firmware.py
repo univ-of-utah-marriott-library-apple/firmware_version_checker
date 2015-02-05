@@ -43,7 +43,7 @@ def main():
         if website_firmware_available:
             output += "\n    Apple support site: {}".format(website_firmware)
 
-        if sw_update_firmware_avilable:
+        if sw_update_firmware_available:
             output += "\n    softwareupdate: {}".format(sw_update_firmware)
 
         print(output)
