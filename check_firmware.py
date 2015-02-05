@@ -67,8 +67,6 @@ def check_software_update():
     return firmware_updates
 
 def get_website_firmware(model_id, computer_name):
-    result = None
-
     table = get_firmware_table()
 
     matches = [line for line in table if line[1] == model_id]
@@ -76,6 +74,7 @@ def get_website_firmware(model_id, computer_name):
     # Check how many matches.
     if len(matches) == 0:
         print("No such model ID found: {}".format(model_id))
+        return None
     elif len(matches) > 1:
         print("Multiple matches found. Using name: '{}'".format(computer_name))
         match = [line for line in matches if line[0] == computer_name]
