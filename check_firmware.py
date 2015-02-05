@@ -1,10 +1,20 @@
 #!/usr/bin/env python
 
+import argparse
 import re
 import subprocess
 import sys
 
-def main():
+try:
+    from management_tools.app_info import AppInfo
+except ImportError as e:
+    print("You need the 'Management Tools' module to be installed first.")
+    print(
+        "https://github.com/univ-of-utah-marriott-library-apple/" +
+        "management_tools")
+    raise e
+
+def main(logger, verbose):
     # Get the hardware data.
     hw_data = get_system_hardware_profile()
 
@@ -12,30 +22,30 @@ def main():
     try:
         model_id = hw_data['Model Identifier']
     except KeyError:
-        print("Invalid key: 'Model Identifier'")
+        logger.info("Invalid key: 'Model Identifier'")
         sys.exit(2)
 
     try:
         serial = hw_data['Serial Number (system)']
     except KeyError:
-        print("Invalid key: 'Serial Number (system)'")
+        logger.info("Invalid key: 'Serial Number (system)'")
         sys.exit(2)
 
     try:
         current_firmware = hw_data['SMC Version (system)']
     except KeyError:
-        print("Invalid key: 'SMC Version (system)'")
+        logger.info("Invalid key: 'SMC Version (system)'")
         sys.exit(2)
 
     computer_name      = get_computer_name(serial)
-    website_firmware   = get_website_firmware(model_id, computer_name)
+    website_firmware   = get_website_firmware(model_id, computer_name, logger)
     sw_update_firmware = check_software_update()
 
     website_firmware_available   = not (website_firmware is None or website_firmware == '' or website_firmware == current_firmware)
     sw_update_firmware_available = len(sw_update_firmware) != 0
 
     if not (website_firmware_available or sw_update_firmware_available):
-        print("No new firmware version identified.")
+        logger.info("No new firmware version identified.")
         sys.exit(0)
     else:
         output = "Firmware updates found:"
@@ -47,7 +57,7 @@ def main():
             for update in sw_update_firmware:
                 output += "\n    softwareupdate: {}".format(update)
 
-        print(output)
+        logger.info(output)
         sys.exit(10)
 
 def check_software_update():
@@ -67,23 +77,23 @@ def check_software_update():
 
     return firmware_updates
 
-def get_website_firmware(model_id, computer_name):
+def get_website_firmware(model_id, computer_name, logger):
     table = get_firmware_table()
 
     matches = [line for line in table if line[1] == model_id]
 
     # Check how many matches.
     if len(matches) == 0:
-        print("No such model ID found: {}".format(model_id))
+        logger.info("No such model ID found: {}".format(model_id))
         return None
     elif len(matches) > 1:
-        print("Multiple matches found. Using name: '{}'".format(computer_name))
+        logger.info("Multiple matches found. Using name: '{}'".format(computer_name))
         match = [line for line in matches if line[0] == computer_name]
     else:
         match = matches[0]
 
     if len(match) == 0:
-        print("No match between model ID ({}) and computer name ({})".format(model_id, computer_name))
+        logger.info("No match between model ID ({}) and computer name ({})".format(model_id, computer_name))
         sys.exit(5)
 
     return match[2].split(' ', 1)[0]
@@ -208,10 +218,20 @@ def get_system_hardware_profile():
         key, value = line.split(':', 1)
         result[key] = value.strip()
 
-    # for key, value in result.iteritems():
-    #     print("{}: {}".format(key, value))
-
     return result
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-V', '--verbose', action='store_true')
+    parser.add_argument('-n', '--no-log', action='store_true')
+    parser.add_argument('-l', '--log-dest')
+
+    args = parser.parse_args()
+
+    logger = psm.universal.Output(
+        name     = "check_firmware",
+        log      = not args.no_log,
+        log_dest = args.log_dest
+    )
+
+    main(logger, verbose)
