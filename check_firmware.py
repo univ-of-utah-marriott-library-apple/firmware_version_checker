@@ -163,6 +163,9 @@ def get_firmware_table():
             model_id    = re.sub(r"<.*?>", "", model_id)
             smc_version = re.sub(r"<.*?>", "", smc_version)
 
+            # Model IDs should have no interior whitespace, so remove it.
+            model_id = ''.join(model_id.split())
+
             result.append( (computer, model_id, smc_version) )
 
     # for item in result:
