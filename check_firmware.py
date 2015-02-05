@@ -8,7 +8,7 @@ def main():
     # Get the hardware data.
     hw_data = get_system_hardware_profile()
 
-    # Pull out relevant info.
+    # Pull out relevant info from System Profiler.
     try:
         model_id = hw_data['Model Identifier']
     except KeyError:
@@ -27,24 +27,46 @@ def main():
         print("Invalid key: 'SMC Version (system)'")
         sys.exit(2)
 
-    computer_name = get_computer_name(serial)
+    computer_name      = get_computer_name(serial)
+    website_firmware   = get_website_firmware(model_id, computer_name)
+    sw_update_firmware = check_software_update()
 
-    # model_id = "iMac9,1"
+    website_firmware_available   = not (website_firmware is None or website_firmware == '' or website_firmware == current_firmware)
+    sw_update_firmware_available = len(sw_update_firmware) != 0
 
-    desired_firmware = get_desired_firmware(model_id, computer_name)
-
-    if (
-        desired_firmware is None or
-        desired_firmware == '' or
-        desired_firmware == current_firmware
-    ):
+    if not (website_firmware_available or sw_update_firmware_available):
         print("No new firmware version identified.")
         sys.exit(0)
     else:
-        print("New firmware version available: {}".format(desired_firmware))
-        sys.exit(1)
+        output = "Firmware updates found:"
 
-def get_desired_firmware(model_id, computer_name):
+        if website_firmware_available:
+            output += "\n    Apple support site: {}".format(website_firmware)
+
+        if sw_update_firmware_avilable:
+            output += "\n    softwareupdate: {}".format(sw_update_firmware)
+
+        print(output)
+        sys.exit(10)
+
+def check_software_update():
+    available_updates = subprocess.check_output([
+        '/usr/sbin/softwareupdate', '-l'
+    ]).split('\n')
+
+    if (available_updates[4] == ''):
+        # No updates were found at all.
+        return False
+
+    available_updates = available_updates[5:]
+
+    available_updates = [item[5:] for item in available_updates if item.startswith('   * ')]
+
+    firmware_updates = [item for item in available_updates if ("firm" in item.lower() or "efi" in item.lower())]
+
+    return firmware_updates
+
+def get_website_firmware(model_id, computer_name):
     result = None
 
     table = get_firmware_table()
