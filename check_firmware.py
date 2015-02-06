@@ -6,12 +6,10 @@ import subprocess
 import sys
 
 try:
-    from management_tools.app_info import AppInfo
+    from management_tools import loggers
 except ImportError as e:
-    print("You need the 'Management Tools' module to be installed first.")
-    print(
-        "https://github.com/univ-of-utah-marriott-library-apple/" +
-        "management_tools")
+    print("You need version 1.6.0 or greater of the 'Management Tools' module to be installed first.")
+    print("https://github.com/univ-of-utah-marriott-library-apple/management_tools")
     raise e
 
 def main(logger, verbose):
@@ -228,10 +226,10 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    logger = psm.universal.Output(
-        name     = "check_firmware",
-        log      = not args.no_log,
-        log_dest = args.log_dest
+    logger = loggers.get_logger(
+        name = "check_firmware",
+        log  = not args.no_log,
+        path = args.log_dest
     )
 
-    main(logger, verbose)
+    main(logger, args.verbose)
