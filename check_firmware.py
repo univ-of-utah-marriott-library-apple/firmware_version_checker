@@ -7,6 +7,7 @@ import sys
 
 try:
     from management_tools import loggers
+    from management_tools.plist_editor import PlistEditor
 except ImportError as e:
     print("You need version 1.6.0 or greater of the 'Management Tools' module to be installed first.")
     print("https://github.com/univ-of-utah-marriott-library-apple/management_tools")
@@ -19,25 +20,37 @@ def main(logger, verbose):
     # Pull out relevant info from System Profiler.
     try:
         model_id = hw_data['Model Identifier']
+        logger.debug("Model ID: {}".format(model_id))
     except KeyError:
-        logger.info("Invalid key: 'Model Identifier'")
+        logger.critical("Invalid key in SPHardwareData: 'Model Identifier'")
         sys.exit(2)
 
     try:
         serial = hw_data['Serial Number (system)']
+        logger.debug("Serial Number: {}".format(serial))
     except KeyError:
-        logger.info("Invalid key: 'Serial Number (system)'")
+        logger.critical("Invalid key in SPHardwareData: 'Serial Number (system)'")
         sys.exit(2)
 
     try:
         current_firmware = hw_data['SMC Version (system)']
+        logger.debug("Current SMC Version: {}".format(current_firmware))
     except KeyError:
-        logger.info("Invalid key: 'SMC Version (system)'")
+        logger.critical("Invalid key in SPHardwareData: 'SMC Version (system)'")
         sys.exit(2)
 
+    marketing_name     = get_marketing_name(model_id)
     computer_name      = get_computer_name(serial)
-    website_firmware   = get_website_firmware(model_id, computer_name, logger)
     sw_update_firmware = check_software_update()
+    
+    if computer_name:
+        logger.debug("Computer Name: {}".format(computer_name))
+        website_firmware = get_website_firmware(model_id, computer_name, logger)
+    elif marketing_name:
+        logger.debug("Marketing Name: {}".format(marketing_name))
+        website_firmware = get_website_firmware(model_id, marketing_name, logger)
+    else:
+        logger.warn("Unable to look up website firmware information.")
 
     website_firmware_available   = not (website_firmware is None or website_firmware == '' or website_firmware == current_firmware)
     sw_update_firmware_available = len(sw_update_firmware) != 0
@@ -57,6 +70,23 @@ def main(logger, verbose):
 
         logger.info(output)
         sys.exit(10)
+    
+def get_marketing_name(model_id):
+    marketing_data = PlistEditor('/System/Library/PrivateFrameworks/ServerInformation.framework/Versions/A/Resources/English.lproj/SIMachineAttributes.plist')
+    
+    model_data = marketing_data.read(model_id).split('\n')
+    
+    match = None
+    
+    for line in model_data:
+        if "marketingModel" in line:
+            line = line.strip()
+            match = re.search(r'"(.*?)"', line)
+    
+    if match and len(match.groups()) > 0:
+        return match.group(1)
+    else:
+        return None
 
 def check_software_update():
     available_updates = subprocess.check_output([
@@ -82,17 +112,17 @@ def get_website_firmware(model_id, computer_name, logger):
 
     # Check how many matches.
     if len(matches) == 0:
-        logger.info("No such model ID found: {}".format(model_id))
+        logger.warn("No such model ID found: {}".format(model_id))
         return None
     elif len(matches) > 1:
-        logger.info("Multiple matches found. Using name: '{}'".format(computer_name))
+        logger.warn("Multiple matches found. Using name: '{}'".format(computer_name))
         match = [line for line in matches if line[0] == computer_name]
     else:
         match = matches[0]
 
     if len(match) == 0:
-        logger.info("No match between model ID ({}) and computer name ({})".format(model_id, computer_name))
-        sys.exit(5)
+        logger.error("No match between model ID ({}) and computer name ({})".format(model_id, computer_name))
+        return None
 
     return match[2].split(' ', 1)[0]
 
@@ -187,18 +217,17 @@ def get_computer_name(serial):
     curl_command = [
         '/usr/bin/curl',
         '-Lks',
-        'https://selfsolve.apple.com/wcResults.do?sn={serial_number}&Continue=Continue&num=0'.format(serial_number = serial)
+        'https://selfsolve.apple.com/RegisterProduct.do?productRegister=Y&country=USA&id={serial_number}'.format(serial_number = serial)
     ]
     page = subprocess.check_output(curl_command).split('\n')
     result = None
     for line in page:
         line = line.strip()
-        if line.startswith('warrantyPage.warrantycheck.displayProductInfo'):
+        if "productname" in line:
             result = line
 
     if result:
-        parts = result.split(', ', 1)
-        result = parts[1][1:].split("'", 1)[0]
+        result = re.sub(r"<.*?>", "", result)
 
     return result
 
@@ -225,11 +254,16 @@ if __name__ == '__main__':
     parser.add_argument('-l', '--log-dest')
 
     args = parser.parse_args()
+    
+    level = 20
+    if args.verbose:
+        level = 10
 
     logger = loggers.get_logger(
-        name = "check_firmware",
-        log  = not args.no_log,
-        path = args.log_dest
+        name  = "check_firmware",
+        log   = not args.no_log,
+        level = level,
+        path  = args.log_dest
     )
 
     main(logger, args.verbose)
