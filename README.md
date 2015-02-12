@@ -1,4 +1,4 @@
-Firmware Version Scraper
+Firmware Version Checker
 ========================
 
 A simple, standalone script to check whether your OS X computer's firmware is up-to-date.
