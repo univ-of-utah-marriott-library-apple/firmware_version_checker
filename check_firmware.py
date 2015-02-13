@@ -8,7 +8,7 @@ import sys
 attributes = {
     'long_name': "Firmware Update Checker",
     'name':      "check_firmware",
-    'version':   "1.0.0"
+    'version':   "1.0.2"
 }
 
 # Check that management_tools is installed on this computer.
@@ -61,7 +61,7 @@ def main(logger, verbose):
     sw_update_firmware_available = len(sw_update_firmware) != 0
 
     # Get the computer name.
-    computer_name = get_computer_name(serial)
+    computer_name = get_computer_name(serial, logger)
     # Check the Apple support website for updates.
     if computer_name:
         logger.debug("Computer Name: {}".format(computer_name))
@@ -262,7 +262,7 @@ def get_firmware_table():
 
     return result
 
-def get_computer_name(serial):
+def get_computer_name(serial, logger):
     """
     Contacts the Apple warranty support page https://selfsolve.apple.com/ and
     attempts to get a human-readable name from a serial number.
@@ -288,6 +288,28 @@ def get_computer_name(serial):
     # If we got something back, clean it up (remove tags).
     if result:
         result = re.sub(r"<.*?>", "", result)
+
+    if result == "" or result is None:
+        # Some computers work better with other links, for some reason. So if we
+        # don't have any result left at this point, try the other link.
+        logger.debug("No information from first site. Trying backup.")
+        curl_command = [
+            '/usr/bin/curl',
+            '-Lks',
+            'https://selfsolve.apple.com/wcResults.do?sn={serial_number}&Continue=Continue&num=0'.format(serial_number = serial)
+        ]
+        page = subprocess.check_output(curl_command).split('\n')
+
+        # Find the appropriate line in the page.
+        result = None
+        for line in page:
+            line = line.strip()
+            if "productname" in line:
+                result = line
+
+        # If we got something back, clean it up (remove tags).
+        if result:
+            result = re.sub(r"<.*?>", "", result)
 
     return result
 
