@@ -25,7 +25,7 @@ def main(logger, verbose):
     Attempts to find any available firmware updates for this computer. Output
     is logged according to 'logger', and verbosity can be increased by setting
     'verbose' to true.
-    
+
     :param logger: a management_tools.loggers logger for outputting/saving info
     :param verbose: whether or not to output extra information
     """
@@ -68,7 +68,8 @@ def main(logger, verbose):
         website_firmware = get_website_firmware(model_id, computer_name, logger)
     else:
         logger.warn("Unable to look up website firmware information.")
-    
+        website_firmware = None
+
     # Determine whether any firmware updates are available from above info.
     website_firmware_available = not (website_firmware is None or website_firmware == '' or website_firmware == current_firmware)
 
@@ -94,6 +95,8 @@ def check_software_update():
     """
     Runs /usr/sbin/softwareupdate to check for any available updates, and then
     returns any updates found with "firm" or "efi" in their names.
+
+    :return: a list containing available firmware updates (an empty list if none are available)
     """
     # Find all available updates.
     available_updates = subprocess.check_output([
@@ -101,8 +104,8 @@ def check_software_update():
     ]).split('\n')
 
     if (available_updates[4] == ''):
-        # No updates were found at all.
-        return False
+        # No updates were found at all, so return an empty list.
+        return []
 
     # The available updates are everything from line 5 onward.
     available_updates = available_updates[5:]
@@ -119,7 +122,7 @@ def get_website_firmware(model_id, computer_name, logger):
     Contacts the Apple Support website http://support.apple.com/en-us/HT201518.
     This site contains a table with a list of potential firmware updates that
     may not appear in Software Update.
-    
+
     :param model_id: the Apple-given model identifier of the computer (e.g. "iMac14,1")
     :param computer_name: the name of the computer (e.g. "iMac (21.5-inch, Late 2013)")
     :param logger: a management_tools.loggers logger to output information
@@ -157,7 +160,7 @@ def get_firmware_table():
     """
     Parses the Apple site http://support.apple.com/en-us/HT201518 for the table
     containing firmware update information.
-    
+
     :return: a list with rows of (computer name, model ID, SMC version)
     """
     # Get the contents of the web page.
@@ -167,7 +170,7 @@ def get_firmware_table():
         'http://support.apple.com/en-us/HT201518'
     ]
     page = subprocess.check_output(curl_command).split('\n')
-    
+
     # Grab the table from the larger page.
     table_section = None
     grab_it = False
@@ -256,14 +259,14 @@ def get_firmware_table():
             model_id = ''.join(model_id.split())
 
             result.append( (computer, model_id, smc_version) )
-    
+
     return result
 
 def get_computer_name(serial):
     """
     Contacts the Apple warranty support page https://selfsolve.apple.com/ and
     attempts to get a human-readable name from a serial number.
-    
+
     :param serial: the serial number of the computer
     :return: the name of the computer
     """
@@ -274,25 +277,25 @@ def get_computer_name(serial):
         'https://selfsolve.apple.com/RegisterProduct.do?productRegister=Y&country=USA&id={serial_number}'.format(serial_number = serial)
     ]
     page = subprocess.check_output(curl_command).split('\n')
-    
+
     # Find the appropriate line in the page.
     result = None
     for line in page:
         line = line.strip()
         if "productname" in line:
             result = line
-    
+
     # If we got something back, clean it up (remove tags).
     if result:
         result = re.sub(r"<.*?>", "", result)
-    
+
     return result
 
 def get_system_hardware_profile():
     """
     Parses the output of '/usr/sbin/system_profiler SPHardwareDataType' and
     stores it into a dictionary (the values are split on the first colon).
-    
+
     :return: a dictionary containing keys and values from system profiler
     """
     # Get the raw output from system_profiler.
@@ -300,19 +303,19 @@ def get_system_hardware_profile():
         '/usr/sbin/system_profiler',
         'SPHardwareDataType'
     ])
-    
+
     # Split the output into lines, remove the extra lines at top, and remove
     # any whitespace.
     output = full_output.split('\n')[5:]
     output = [line.strip() for line in output if line != '']
-    
+
     # Split the resulting lines on their first colon and store them as a key
     # and value pair.
     result = {}
     for line in output:
         key, value = line.split(':', 1)
         result[key] = value.strip()
-    
+
     return result
 
 def version():
@@ -326,7 +329,7 @@ def usage():
     Prints out relevant usage information.
     """
     print(version())
-    
+
     print("""\
 usage: {name} [-hvnV] [-l log]
 
@@ -359,25 +362,25 @@ if __name__ == '__main__':
     parser.add_argument('-V', '--verbose', action='store_true')
     parser.add_argument('-n', '--no-log', action='store_true')
     parser.add_argument('-l', '--log-dest')
-    
+
     # Parse the arguments.
     args = parser.parse_args()
-    
+
     # Just print the help information and quit.
     if args.help:
         usage()
         sys.exit(0)
-        
+
     # Just print the version information and quit.
     if args.version:
         print(version())
         sys.exit(0)
-    
+
     # Set the logging level.
     level = 20
     if args.verbose:
         level = 10
-    
+
     # Create the logger (very useful).
     logger = loggers.get_logger(
         name  = "check_firmware",
@@ -385,6 +388,6 @@ if __name__ == '__main__':
         level = level,
         path  = args.log_dest
     )
-    
+
     # Call the program to action.
     main(logger, args.verbose)
