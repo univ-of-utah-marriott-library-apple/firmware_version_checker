@@ -58,4 +58,6 @@ This is a reverse-chronological list of important updates to this project.
 
 | Date | Version | Update |
 |------|:-------:|--------|
+| 2015-02-13 | 1.0.2 | Now supports a backup Apple support website in case the regular one doesn't return warranty information. |
+| 2015-02-13 | 1.0.1 | Fixed bug where computers with no updates in Software Update would throw an error. |
 | 2015-02-12 | 1.0.0 | First major release. Reports on availability of updates to local device firmware. |
