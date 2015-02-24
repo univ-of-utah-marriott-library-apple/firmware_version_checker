@@ -3,6 +3,16 @@ Firmware Version Checker
 
 A simple, standalone script to check whether your OS X computer's firmware is up-to-date.
 
+## Contents
+
+* [Contact](#contact) - how to reach us
+* [System Requirements](#system-requirements) - what you need first
+* [Download](#download) - how to get the installer
+* [Usage](#usage) - how to use it
+  * [Options](#options)
+* [Technical](#technical) - what does it do?
+* [Update History](#update-history) - overview of notable updates
+
 ## Contact
 
 If you have any comments, questions, or other input, either [file an issue](../../issues) or [send us an email](mailto:mlib-its-mac-github@lists.utah.edu). Thanks!
@@ -13,14 +23,9 @@ If you have any comments, questions, or other input, either [file an issue](../.
 * Python 2.7.x (which you can download [here](https://www.python.org/download/))
 * [Management Tools](https://github.com/univ-of-utah-marriott-library-apple/management_tools) - Version 1.6.0 or greater!
 
-## Setup
+## Download
 
-Simply download the `check_firmware.py` script from the [releases page](../../releases). We distribute ours to `/usr/local/bin/check_firmware.py`, but it will function anywhere. You will need to make the file executable, of course, and then you can run it.
-
-```bash
-$ chmod +x check_firmware.py
-$ ./check_firmware.py
-```
+[Simply download the most recent installer (.dmg) from the releases page](../../releases). The installer package will distribute the script to `/usr/local/bin/check_firmware.py`.
 
 ## Usage
 
